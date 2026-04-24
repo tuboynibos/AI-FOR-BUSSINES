@@ -1,0 +1,159 @@
+{
+  "name": "Tugas 3 Pengembangan",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -144,
+        -64
+      ],
+      "id": "621ed13f-8571-4389-ad88-898bbea3faae",
+      "name": "When chat message received",
+      "webhookId": "dc8b0a86-13c0-4a5b-ac88-f1111f423968"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "\"Anda adalah asisten penjualan kursus desain grafis. Jawablah pertanyaan harga menggunakan data dari Google Sheets.\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        64,
+        -64
+      ],
+      "id": "1f14a4e0-2769-4551-80bb-8c2716ac384b",
+      "name": "AI Agent",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        32,
+        144
+      ],
+      "id": "ef5fd254-bd62-41f8-851d-e90a8eb3e658",
+      "name": "Google Gemini Chat Model",
+      "notesInFlow": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "laN8PqffEOMTdHlp",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        176
+      ],
+      "id": "30660a1d-d3ac-4d29-b6b7-46a9093ba5cc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ZMZddyGYJu34mrPUWEi-gxzoXRffFS0Wns5afeJ1Y6I",
+          "mode": "list",
+          "cachedResultName": "Salinan dari n8n 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZMZddyGYJu34mrPUWEi-gxzoXRffFS0Wns5afeJ1Y6I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZMZddyGYJu34mrPUWEi-gxzoXRffFS0Wns5afeJ1Y6I/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        320,
+        160
+      ],
+      "id": "7cf83c77-d632-4fb8-9de7-355b39cecae4",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nKKNbzDXc7JgeTdY",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5704cbba-f8a1-49c3-8f30-1b5a00b98bae",
+  "meta": {
+    "instanceId": "2aa81c340a53702a9d2fa7cdea1796af21b0d8994a41dd6d072dcef7db84ddb7"
+  },
+  "id": "e8Uifhvh4CVfmabo",
+  "tags": []
+}
