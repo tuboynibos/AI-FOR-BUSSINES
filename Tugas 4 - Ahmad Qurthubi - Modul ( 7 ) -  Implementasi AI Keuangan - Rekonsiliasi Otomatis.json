@@ -1,0 +1,375 @@
+{
+  "name": "Tugas 4 - Ahmad Qurthubi - Modul ( 7 ) -  Implementasi AI Keuangan - Rekonsiliasi Otomatis",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1504,
+        240
+      ],
+      "id": "6b7a11f2-0803-4203-b612-57a7d1d17945",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1056,
+        384
+      ],
+      "id": "3211e717-c9d3-4270-9db6-175b09cf68a1",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CODE NODE: CLEAN INTERNAL DATA (REVISI)\nconst results = [];\n\nfor (const item of $input.all()) {\n  const json = item.json;\n\n  // 1. Filter Tipe Transaksi\n  const tipe = json['Tipe Transaksi'];\n  if (tipe !== 'Pembayaran' && tipe !== 'Pengeluaran' && tipe !== 'Penerimaan') {\n    continue; \n  }\n\n  // 2. Bersihkan Tanggal (Hapus spasi & format ulang)\n  // Asumsi format di CSV/Sheet: DD/MM/YYYY\n  const rawDate = (json['Tanggal Transaksi'] || '').toString().trim();\n  const dateParts = rawDate.split('/');\n  // Pastikan date valid\n  if (dateParts.length !== 3) continue;\n  \n  const cleanDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;\n\n  // 3. PENTING: Bersihkan Angka dari titik (.) atau koma (,)\n  // Kita ubah jadi string dulu, hapus semua yang BUKAN angka, baru parse\n  const rawAmount = (json['Jumlah (IDR)'] || '0').toString();\n  const cleanAmount = parseInt(rawAmount.replace(/[^0-9]/g, ''));\n\n  // 4. Buat Match Key\n  const matchKey = `${cleanDate}_${cleanAmount}`;\n\n  results.push({\n    json: {\n      ...json,\n      clean_date: cleanDate,\n      clean_amount: cleanAmount,\n      match_key: matchKey,\n      sumber: 'Internal'\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        112
+      ],
+      "id": "84a20ecb-d690-424d-be63-48c1be2c3617",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -672,
+        128
+      ],
+      "id": "c99fd06c-835e-4d4b-9022-5a6d52c95b92",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CODE NODE: ANALISA REKONSILIASI LENGKAP (tanpa Union)\nconst items = $input.all();\nconst grouped = {};\n\n// 1. Group by match_key\nfor (const item of items) {\n  const key = item.json.match_key;\n  if (!grouped[key]) {\n    grouped[key] = { sources: [], details: [] };\n  }\n  grouped[key].sources.push(item.json.sumber);\n  grouped[key].details.push(item.json);\n}\n\n// 2. Bangun hasil analisa\nconst results = [];\nfor (const [key, group] of Object.entries(grouped)) {\n  const hasInternal = group.sources.includes('Internal');\n  const hasBank = group.sources.includes('Bank');\n\n  let status, pesan, priority;\n  if (hasInternal && hasBank) {\n    status = 'MATCHED';\n    pesan = '✅ Data klop (Cocok).';\n    priority = 'Low';\n  } else if (hasInternal && !hasBank) {\n    status = 'MISSING IN BANK';\n    pesan = '⚠️ Tercatat di Internal, tapi tidak ada di Bank.';\n    priority = 'High';\n  } else if (!hasInternal && hasBank) {\n    status = 'UNRECORDED INTERNAL';\n    pesan = '⚠️ Ada di Bank, tapi tidak tercatat di Internal.';\n    priority = 'Medium';\n  }\n\n  const internal = group.details.find(d => d.sumber === 'Internal');\n  const bank = group.details.find(d => d.sumber === 'Bank');\n  const refDate = (internal || bank)?.clean_date;\n  const amount = (internal || bank)?.clean_amount;\n\n  results.push({\n    json: {\n      Tanggal: refDate,\n      Nominal: amount,\n      Status: status,\n      Pesan: pesan,\n      Prioritas: priority,\n      Internal_ID: internal?.['ID Referensi'] || 'N/A',\n      Bank_ID: bank?.['ID Transaksi Bank'] || 'N/A',\n      Deskripsi: internal?.Deskripsi || bank?.['Deskripsi Transaksi'] || '-',\n      Match_Key: key,\n      Sources: group.sources.join(' + ')\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        128
+      ],
+      "id": "87065fb4-aad2-42f1-8c98-9bf6a31f75f3",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "133dd451-0307-49d4-b85d-599794bb1180",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "MATCHED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        128
+      ],
+      "id": "19ef20a1-3294-46a8-a84a-ceb6281bfc88",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        256
+      ],
+      "id": "8d2365e8-02be-4512-8c53-d3ac401149c6",
+      "name": "Wait",
+      "webhookId": "ee97a4c3-eff2-466e-9f20-3402b00e4590"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1HmJuisPvGdJvLpWJFDdGqPxEycrcUjNlVxKTg5Ri9m8",
+          "mode": "list",
+          "cachedResultName": "Dummy Rekonsiliasi",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HmJuisPvGdJvLpWJFDdGqPxEycrcUjNlVxKTg5Ri9m8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HmJuisPvGdJvLpWJFDdGqPxEycrcUjNlVxKTg5Ri9m8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1264,
+        112
+      ],
+      "id": "ce39ba95-d949-480a-aebf-e7bdc6778392",
+      "name": "Data Internal",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BowSo1sCin3dNc18",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1NcXGngMYuj84eukCFez8ZJ0-E4zoc0nu",
+          "mode": "list",
+          "cachedResultName": "Dummy Rekonsiliasi - Sheet2.csv",
+          "cachedResultUrl": "https://drive.google.com/file/d/1NcXGngMYuj84eukCFez8ZJ0-E4zoc0nu/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1264,
+        384
+      ],
+      "id": "bbf66abc-8977-4418-bb23-d65655b1bbfc",
+      "name": "Data Bank",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "efu3WzzRwskDrb8N",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// CODE NODE: CLEAN BANK DATA (REVISI)\nconst results = [];\n\nfor (const item of $input.all()) {\n  const json = item.json;\n\n  // 1. Bersihkan Tanggal\n  const rawDate = (json['Tanggal Bank'] || '').toString().trim();\n  const dateParts = rawDate.split('/');\n  if (dateParts.length !== 3) continue;\n\n  const cleanDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;\n\n  // 2. PENTING: Bersihkan Angka (Hapus titik ribuan Rupiah)\n  const rawAmount = (json['Jumlah (IDR)'] || '0').toString();\n  // Regex ini menghapus apa saja yang bukan angka (termasuk titik/koma)\n  const cleanAmount = parseInt(rawAmount.replace(/[^0-9]/g, ''));\n\n  // 3. Buat Match Key\n  const matchKey = `${cleanDate}_${cleanAmount}`;\n\n  results.push({\n    json: {\n      ...json,\n      clean_date: cleanDate,\n      clean_amount: cleanAmount,\n      match_key: matchKey,\n      sumber: 'Bank'\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        384
+      ],
+      "id": "5a8603da-f28a-4cc4-b2be-730a50987350",
+      "name": "Cleaning Data"
+    },
+    {
+      "parameters": {
+        "chatId": "5593644177",
+        "text": "=🚨 **LAPORAN SELISIH KEUANGAN**\n\n📅 Tanggal: {{ $json.Tanggal }}\n💰 Nominal: Rp {{ $json.Nominal }}\n\n⚠️ **Status: {{ $json.Status }}**\n📝 Ket: {{ $json.Pesan }}\n\n🔍 Ref Internal: {{ $json.Internal_ID }}\n🏦 Ref Bank: {{ $json.Bank_ID }}\nℹ️ Desc: {{ $json.Deskripsi }}\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4053d2ae-c4e2-403f-bd46-cdcb6a32d118",
+      "name": "Data Cocok",
+      "webhookId": "993b931d-6672-4d67-90b4-4a56cd1dc948",
+      "credentials": {
+        "telegramApi": {
+          "id": "0O1W6IE6UXqj57BU",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5701993759",
+        "text": "=🚨 **LAPORAN SELISIH KEUANGAN**\n\n📅 Tanggal: {{ $json.Tanggal }}\n💰 Nominal: Rp {{ $json.Nominal }}\n\n⚠️ **Status: {{ $json.Status }}**\n📝 Ket: {{ $json.Pesan }}\n\n🔍 Ref Internal: {{ $json.Internal_ID }}\n🏦 Ref Bank: {{ $json.Bank_ID }}\nℹ️ Desc: {{ $json.Deskripsi }}\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        256
+      ],
+      "id": "1d005ba9-9586-4afd-8526-06876239c8bb",
+      "name": "Data Tidak Cocok",
+      "webhookId": "993b931d-6672-4d67-90b4-4a56cd1dc948",
+      "credentials": {
+        "telegramApi": {
+          "id": "0O1W6IE6UXqj57BU",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Internal",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Data Bank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Cleaning Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Data Cocok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Data Tidak Cocok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Internal": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Bank": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d2cd711b-4110-45c4-94a1-35d4b832af5f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2aa81c340a53702a9d2fa7cdea1796af21b0d8994a41dd6d072dcef7db84ddb7"
+  },
+  "id": "5KiWivzewD2GEoxB",
+  "tags": []
+}
