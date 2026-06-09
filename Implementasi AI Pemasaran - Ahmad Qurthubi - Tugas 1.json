@@ -1,0 +1,110 @@
+{
+  "name": "Implementasi AI Pemasaran - Ahmad Qurthubi - Tugas 1",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Pendaftaran NFA SIB Mandiri batch 4 ",
+        "formDescription": "HArap isi data kamu dulu yahh",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nama",
+              "placeholder": "Nama lengkapmu",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email ",
+              "placeholder": "Email@gmail.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Program ",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Digital Marketing"
+                  },
+                  {
+                    "option": "Ai For Bussiness"
+                  },
+                  {
+                    "option": "Data Analyst"
+                  },
+                  {
+                    "option": "DevOps "
+                  },
+                  {
+                    "option": "Mobile Apps"
+                  },
+                  {
+                    "option": "Fullstack "
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2f1441e4-97d0-4125-89d7-e12396028e2e",
+      "name": "On form submission",
+      "webhookId": "d1242148-44ed-42dd-824d-d5e01b625eee"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['Email '] }}",
+        "subject": "Selamat Pendaftaran anda telah dikirimkan",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    /* Reset dasar untuk kompatibilitas email client */\n    body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0ebf8; }\n    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }\n    .header { background-color: #673ab7; /* Warna Ungu Google Form */ color: #ffffff; padding: 24px; text-align: center; }\n    .header h1 { margin: 0; font-size: 20px; font-weight: 600; }\n    .content { padding: 30px; color: #333333; line-height: 1.6; }\n    .data-box { background-color: #f8f9fa; border-left: 4px solid #673ab7; padding: 15px; margin: 20px 0; border-radius: 4px; }\n    .data-row { margin-bottom: 10px; }\n    .label { font-weight: bold; color: #5f6368; font-size: 14px; }\n    .value { color: #202124; font-size: 16px; }\n    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }\n    .button { display: inline-block; background-color: #673ab7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 20px; font-weight: bold; }\n  </style>\n</head>\n<body>\n\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>Konfirmasi Pendaftaran<br>SIB Mandiri Batch 4 NF Academy</h1>\n    </div>\n\n    <div class=\"content\">\n      <p>Halo <strong>{{ $json[\"Nama\"] }}</strong>,</p>\n      \n      <p>Terima kasih telah melakukan pendaftaran. Data Anda telah berhasil kami terima di sistem NF Academy.</p>\n      \n      <p>Berikut adalah rincian data yang Anda kirimkan:</p>\n\n      <div class=\"data-box\">\n        <div class=\"data-row\">\n          <div class=\"label\">Nama Lengkap</div>\n          <div class=\"value\">{{ $json[\"Nama\"] }}</div>\n        </div>\n        \n        <div class=\"data-row\">\n          <div class=\"label\">Email Terdaftar</div>\n          <div class=\"value\">{{ $json[\"Email\"] }}</div>\n        </div>\n\n        <div class=\"data-row\">\n          <div class=\"label\">Program Pilihan</div>\n          <div class=\"value\">{{ $json['Program '] }}</div>\n        </div>\n      </div>\n\n      <p>Mohon cek kembali data di atas. Jika ada kesalahan atau pertanyaan lebih lanjut, silakan balas email ini.</p>\n      \n      <p>Selanjutnya, tim kami akan melakukan verifikasi dan menghubungi Anda untuk langkah berikutnya.</p>\n      \n      <br>\n      <p>Salam hangat,<br><strong>Tim Penerimaan NF Academy</strong></p>\n    </div>\n\n    <div class=\"footer\">\n      &copy; 2025 NF Academy. All rights reserved.<br>\n      Email ini dikirim secara otomatis melalui sistem pendaftaran.\n    </div>\n  </div>\n\n</body>\n</html>\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "317591e3-baaa-4085-9728-191174c58e41",
+      "name": "Send a message",
+      "webhookId": "778dbb51-aa1f-40a3-a3d2-32d43bcd9b29",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Hhy5Yymldvnb27sU",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f7f5979d-e2c3-4e94-aedd-4428715fb5fc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2aa81c340a53702a9d2fa7cdea1796af21b0d8994a41dd6d072dcef7db84ddb7"
+  },
+  "id": "lTzxKzKceO3dI6ss",
+  "tags": []
+}
