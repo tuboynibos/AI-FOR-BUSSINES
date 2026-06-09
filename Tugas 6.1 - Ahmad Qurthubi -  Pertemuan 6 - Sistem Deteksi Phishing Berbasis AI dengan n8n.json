@@ -1,0 +1,329 @@
+{
+  "name": "Tugas 6.1 - Ahmad Qurthubi -  Pertemuan 6 - Sistem Deteksi Phishing Berbasis AI dengan n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "73996dfb-33fa-4e11-9dc8-2cbc3b2e8c04",
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "customer@bcainsurance.co.id",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "c2dac547-7e46-43fb-a8f9-ee1ce55dd75d",
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "haloblu@bcadigital.co.id",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "f2c64a16-fd5f-4de3-94eb-3e91d5c5eda9",
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "customer@bcalife.co.id",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "f75948b8-81ab-47c0-947f-6cf8b7f3ae94",
+              "leftValue": "={{ $json.From }}",
+              "rightValue": "recruitmentbcaf@bcaf.id",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        176
+      ],
+      "id": "b548db13-d003-417e-8ea4-b3ac46d9962c",
+      "name": "Cek Allowlist"
+    },
+    {
+      "parameters": {
+        "chatId": "5593644177",
+        "text": "=Ada email baru dari:  {{ $('Gmail Trigger').item.json.From }}\nSubject: {{ $('Gmail Trigger').item.json.Subject }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "55143522-7cf3-4429-be26-fc5880fd3644",
+      "name": "Reminder Email dari Allowlist",
+      "webhookId": "7d0035d9-716a-43bc-bbf0-44bc7f3972a1",
+      "credentials": {
+        "telegramApi": {
+          "id": "0O1W6IE6UXqj57BU",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil output dari node sebelumnya (LLM)\nconst llmOutput = $json.choices[0].message.content;\n\n// Debug (opsional)\nconsole.log(llmOutput);\n\n// Regex cari \"Skor: angka\"\nconst match = llmOutput.match(/Skor:\\s*(\\d+)/);\n\nlet score = 0;\n\n// Jika ditemukan\nif (match && match[1]) {\n  score = parseInt(match[1], 10);\n}\n\n// Return hasil\nreturn {\n  score: score\n};\n\n// Jika ditemukan, ambil angkanya\nif (match && match[1]) {\n  score = parseInt(match[1], 10);\n}\n\n// Kembalikan skor DAN messageId untuk node IF dan Gmail\nreturn { \n  score: score,\n  messageId: emailMessageId \n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        192
+      ],
+      "id": "7bbb429e-57f7-4e57-8644-48e2d5024eac",
+      "name": "Ekstrak Skor dari Teks AI"
+    },
+    {
+      "parameters": {
+        "chatId": "5701993759",
+        "text": "=⚠️ Tinjauan Email Diperlukan ⚠️  Email ini TIDAK dihapus, tapi AI mendeteksinya. Mohon periksa secara manual.   - Skor AI: {{ $json.score }}/10  - Dari: {{ $('Gmail Trigger').item.json.From }} - Subjek: {{ $('Gmail Trigger').item.json.Subject }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        304
+      ],
+      "id": "07834c90-bf90-4be3-b25c-7a25ddf56f8f",
+      "name": "Send a text message",
+      "webhookId": "e12a4887-daea-40a3-b32f-3db544858407",
+      "credentials": {
+        "telegramApi": {
+          "id": "0O1W6IE6UXqj57BU",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.snippet}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        240
+      ],
+      "id": "304d9918-e28d-44da-a8f7-e86bda769f22",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97466855-caa2-402a-b07c-eb89832d13d0",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "2e1050ee-99af-41c3-b63d-a8aa5104bb19",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        528,
+        192
+      ],
+      "id": "57a3056b-3966-4164-917a-1b500b35daaf",
+      "name": "Cek Skor Bahaya"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        176
+      ],
+      "id": "fca1a01f-adec-4e4a-ab37-ee30a574a3a4",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Hhy5Yymldvnb27sU",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "SPAM"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        96
+      ],
+      "id": "bed1e489-482a-48ce-ab2d-4f593698851c",
+      "name": "Add label to message",
+      "webhookId": "2c2e691a-0ca9-4523-abcb-f4ef9b6ae691",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Hhy5Yymldvnb27sU",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cek Allowlist": {
+      "main": [
+        [
+          {
+            "node": "Reminder Email dari Allowlist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ekstrak Skor dari Teks AI": {
+      "main": [
+        [
+          {
+            "node": "Cek Skor Bahaya",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Ekstrak Skor dari Teks AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Skor Bahaya": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Cek Allowlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "71f82c13-5b24-4efe-b276-19b5f65f23e2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2aa81c340a53702a9d2fa7cdea1796af21b0d8994a41dd6d072dcef7db84ddb7"
+  },
+  "id": "SNuPghlgi8YMg1gQ",
+  "tags": []
+}
